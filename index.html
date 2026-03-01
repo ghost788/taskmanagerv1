@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLP — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:       #f5f5f2;
+  --s1:       #ffffff;
+  --s2:       #f0efeb;
+  --s3:       #e8e7e2;
+  --border:   #e0dfd9;
+  --border2:  #ceccc5;
+  --text:     #1a1a18;
+  --mid:      #6b6960;
+  --dim:      #a8a59c;
+  --accent:   #5a7a00;   /* single sharp accent — dark olive-green */
+  --red:      #c0392b;
+  --amber:    #b36a00;
+  --mono:     'IBM Plex Mono', monospace;
+  --sans:     'IBM Plex Sans', sans-serif;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── LAYOUT ─── */
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  z-index: 10;
+}
+
+.wordmark {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text);
+}
+
+.wordmark span { color: var(--accent); }
+
+.topbar-right {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--s1);
+  overflow-y: auto;
+  padding: 20px 0;
+}
+
+.sidebar-group {
+  margin-bottom: 28px;
+}
+
+.sidebar-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 0 18px 8px;
+}
+
+.nav {
+  list-style: none;
+}
+
+.nav li a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--mid);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.1s;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+
+.nav li a:hover { color: var(--text); }
+
+.nav li a.active {
+  color: var(--text);
+  border-left-color: var(--accent);
+  background: rgba(90,122,0,0.06);
+}
+
+.nav-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  background: var(--s2);
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+
+.nav-badge.p0 {
+  color: var(--accent);
+  background: rgba(90,122,0,0.08);
+}
+
+/* ─── MAIN ─── */
+.main {
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ─── PAGE HEADER ─── */
+.page-head {
+  padding: 32px 32px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.page-head-inner {
+  padding-bottom: 20px;
+}
+
+.page-title {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.page-desc {
+  font-size: 12px;
+  color: var(--mid);
+  margin-top: 4px;
+  font-family: var(--mono);
+}
+
+/* ─── CONTENT PADDING ─── */
+.pad { padding: 28px 32px; }
+
+/* ─── DIVIDER ─── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 28px 0;
+}
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 14px;
+}
+
+/* ─── OVERVIEW CARDS ─── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+
+.ov-card {
+  background: var(--s1);
+  padding: 20px;
+}
+
+.ov-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+
+.ov-value {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+
+.ov-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 6px;
+}
+
+/* ─── PROJECT ROW (milestone style) ─── */
+.project-block {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.project-block:hover { border-color: var(--border2); }
+
+.project-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.project-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.project-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 3px;
+}
+
+.rag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rag-dot.g { background: var(--accent); }
+.rag-dot.a { background: var(--amber); }
+.rag-dot.r { background: var(--red); }
+
+.rag-text {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.rag-text.g { color: var(--accent); }
+.rag-text.a { color: var(--amber); }
+.rag-text.r { color: var(--red); }
+
+.chevron {
+  font-size: 10px;
+  color: var(--dim);
+  transition: transform 0.2s;
+  font-family: var(--mono);
+}
+
+.project-block.open .chevron { transform: rotate(90deg); }
+
+/* ─── MILESTONES ─── */
+.milestone-panel {
+  display: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.project-block.open .milestone-panel { display: block; }
+
+.milestone-list {
+  padding: 4px 0;
+}
+
+.ms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 11px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.ms-row:last-child { border-bottom: none; }
+.ms-row:hover { background: var(--s1); }
+
+.ms-box {
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--border2);
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.ms-box.done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ms-box.done::after {
+  content: '';
+  width: 5px; height: 8px;
+  border: 1.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translateY(-1px);
+  display: block;
+}
+
+.ms-text {
+  font-size: 13px;
+  color: var(--text);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.ms-text.done {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+
+.ms-phase {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  padding: 2px 7px;
+  background: var(--s2);
+  border-radius: 2px;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 1px;
+}
+
+/* Progress strip at bottom of milestone panel */
+.ms-progress {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--s1);
+}
+
+.ms-prog-bar {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.ms-prog-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width 0.4s ease;
+}
+
+.ms-prog-pct {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mid);
+  white-space: nowrap;
+}
+
+/* Notes area inside milestone panel */
+.ms-notes-row {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--s1);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ms-notes-input {
+  flex: 1;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 7px 11px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ms-notes-input:focus { border-color: var(--accent); }
+.ms-notes-input::placeholder { color: var(--dim); }
+
+.ms-notes-saved {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/* RAG cycler */
+.rag-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background 0.15s;
+  background: none;
+  border: none;
+  font-family: var(--mono);
+}
+
+.rag-btn:hover { background: var(--s2); }
+
+/* ─── PERSONAL GOALS ─── */
+.goals-stack { display: flex; flex-direction: column; gap: 12px; }
+
+.goal-block {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.goal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.goal-label-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goal-icon { font-size: 16px; }
+
+.goal-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.goal-summary {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mid);
+  margin-top: 2px;
+}
+
+.goal-pct {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.goal-body {
+  display: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  padding: 20px;
+}
+
+.goal-block.open .goal-body { display: block; }
+.goal-block.open .chevron { transform: rotate(90deg); }
+
+/* Weight */
+.weight-readout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.weight-cell {
+  background: var(--s1);
+  padding: 12px 14px;
+}
+
+.weight-cell-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 5px;
+}
+
+.weight-cell-val {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.weight-cell-val.accent { color: var(--accent); }
+.weight-cell-val.amber { color: var(--amber); }
+
+/* Sparkline */
+.sparkline {
+  height: 36px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+
+.spark-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 3px;
+  position: relative;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+
+.spark-bar:hover { opacity: 0.7; }
+
+.spark-target {
+  background: rgba(90,122,0,0.08);
+  border-top: 1px dashed rgba(90,122,0,0.4);
+}
+
+.spark-log { background: var(--s3); border-top: 1px solid var(--mid); }
+.spark-latest { background: var(--s3); border-top: 2px solid var(--accent); }
+
+.log-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.log-field {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  width: 120px;
+  transition: border-color 0.15s;
+}
+
+.log-field:focus { border-color: var(--accent); }
+.log-field::placeholder { color: var(--dim); }
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: opacity 0.15s;
+}
+
+.btn:hover { opacity: 0.85; }
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--mid);
+  border-radius: 3px;
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+
+/* Fitness week grid */
+.week-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.day-btn {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 0;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--mono);
+}
+
+.day-btn-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+
+.day-btn-mark {
+  font-size: 14px;
+  color: var(--border2);
+}
+
+.day-btn.done {
+  background: rgba(90,122,0,0.08);
+  border-color: rgba(90,122,0,0.4);
+}
+
+.day-btn.done .day-btn-label { color: var(--accent); }
+.day-btn.done .day-btn-mark { color: var(--accent); }
+
+.day-btn:hover { border-color: var(--border2); }
+
+.fitness-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.fit-stat {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+
+.fit-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+
+.fit-stat-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Home items */
+.home-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.home-row:last-child { border-bottom: none; }
+.home-row:hover { opacity: 0.8; }
+
+.home-box {
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--border2);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.home-box.done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.home-box.done::after {
+  content: '';
+  width: 5px; height: 8px;
+  border: 1.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translateY(-1px);
+  display: block;
+}
+
+.home-item-name {
+  flex: 1;
+  font-size: 13px;
+}
+
+.home-item-name.done {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+
+.home-item-cost {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ─── TECH PLAN ─── */
+.tech-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tech-block {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 18px 20px;
+}
+
+.tech-block-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.stack-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.stack-row:last-child { border-bottom: none; }
+
+.stack-row-right {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* Roadmap */
+.roadmap { position: relative; padding-left: 24px; }
+
+.roadmap::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border);
+}
+
+.rm-item {
+  position: relative;
+  padding: 12px 0 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rm-item:last-child { border-bottom: none; }
+
+.rm-dot {
+  position: absolute;
+  left: -18px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  background: var(--bg);
+}
+
+.rm-dot.done { background: var(--accent); border-color: var(--accent); }
+.rm-dot.now { background: var(--bg); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(90,122,0,0.12); }
+
+.rm-phase {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 3px;
+}
+
+.rm-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.rm-desc {
+  font-size: 12px;
+  color: var(--mid);
+  line-height: 1.6;
+}
+
+/* ─── ANIMATION ─── */
+@keyframes in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.project-block, .goal-block, .tech-block, .ov-card {
+  animation: in 0.25s ease both;
+}
+
+/* stagger via nth-child */
+.project-block:nth-child(1) { animation-delay: 0.04s; }
+.project-block:nth-child(2) { animation-delay: 0.08s; }
+.project-block:nth-child(3) { animation-delay: 0.12s; }
+.project-block:nth-child(4) { animation-delay: 0.16s; }
+
+.goal-block:nth-child(1) { animation-delay: 0.04s; }
+.goal-block:nth-child(2) { animation-delay: 0.08s; }
+.goal-block:nth-child(3) { animation-delay: 0.12s; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="wordmark">MLP<span>·</span>COMMAND CENTER</div>
+    <div class="topbar-right" id="date-stamp"></div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-label">Overview</div>
+      <ul class="nav">
+        <li><a class="active" onclick="go('dashboard', this)">Dashboard</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-label">Work — P0</div>
+      <ul class="nav">
+        <li><a onclick="go('work', this)">Projects <span class="nav-badge p0">4</span></a></li>
+      </ul>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-label">Personal — P0</div>
+      <ul class="nav">
+        <li><a onclick="go('weight', this)">Weight</a></li>
+        <li><a onclick="go('fitness', this)">Fitness</a></li>
+        <li><a onclick="go('home', this)">Home Improvement</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-label">System</div>
+      <ul class="nav">
+        <li><a onclick="go('tech', this)">Tech Solution</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ══════════ DASHBOARD ══════════ -->
+    <div id="view-dashboard" class="view active">
+      <div class="page-head">
+        <div class="page-head-inner">
+          <div class="page-title">Dashboard</div>
+          <div class="page-desc">All P0 items — work &amp; personal</div>
+        </div>
+      </div>
+      <div class="pad">
+        <div class="overview-grid" id="dash-overview"></div>
+
+        <div class="section-label">WORK PROJECTS — P0</div>
+        <div id="dash-work"></div>
+
+        <div class="divider"></div>
+
+        <div class="section-label">PERSONAL GOALS — P0</div>
+        <div id="dash-personal"></div>
+      </div>
+    </div>
+
+    <!-- ══════════ WORK PROJECTS ══════════ -->
+    <div id="view-work" class="view">
+      <div class="page-head">
+        <div class="page-head-inner">
+          <div class="page-title">Work Projects</div>
+          <div class="page-desc">Click a project to expand milestones. Click a milestone to check it off.</div>
+        </div>
+      </div>
+      <div class="pad" id="work-list"></div>
+    </div>
+
+    <!-- ══════════ WEIGHT ══════════ -->
+    <div id="view-weight" class="view">
+      <div class="page-head">
+        <div class="page-head-inner">
+          <div class="page-title">Weight</div>
+          <div class="page-desc">Log your weight and track progress toward your target.</div>
+        </div>
+      </div>
+      <div class="pad" id="weight-body"></div>
+    </div>
+
+    <!-- ══════════ FITNESS ══════════ -->
+    <div id="view-fitness" class="view">
+      <div class="page-head">
+        <div class="page-head-inner">
+          <div class="page-title">Fitness</div>
+          <div class="page-desc">Track weekly workouts. Tap a day to mark it done.</div>
+        </div>
+      </div>
+      <div class="pad" id="fitness-body"></div>
+    </div>
+
+    <!-- ══════════ HOME ══════════ -->
+    <div id="view-home" class="view">
+      <div class="page-head">
+        <div class="page-head-inner">
+          <div class="page-title">Home Improvement</div>
+          <div class="page-desc">Project checklist with estimated costs.</div>
+        </div>
+      </div>
+      <div class="pad" id="home-body"></div>
+    </div>
+
+    <!-- ══════════ TECH ══════════ -->
+    <div id="view-tech" class="view">
+      <div class="page-head">
+        <div class="page-head-inner">
+          <div class="page-title">Tech Solution</div>
+          <div class="page-desc">MLP build plan — web + app + AI stack</div>
+        </div>
+      </div>
+      <div class="pad" id="tech-body"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const D = JSON.parse(localStorage.getItem('mlp2') || 'null') || {
+  projects: [
+    {
+      id: 'shipping', open: true, rag: 'g',
+      name: 'Shipping Charges Solution',
+      meta: 'Target: Q2 2025',
+      note: '',
+      milestones: [
+        { text: 'Requirements & stakeholder alignment', phase: 'Discovery', done: true },
+        { text: 'Source system mapping & data audit', phase: 'Discovery', done: true },
+        { text: 'ETL pipeline design & dev', phase: 'Build', done: false },
+        { text: 'Shipping charges calculation logic', phase: 'Build', done: false },
+        { text: 'Finance UAT & sign-off', phase: 'Test', done: false },
+        { text: 'Prod deployment & runbook', phase: 'Ship', done: false },
+      ]
+    },
+    {
+      id: 'remittance', open: false, rag: 'a',
+      name: 'Electronic Remittance BRD & Delivery',
+      meta: 'Target: Q2 2025',
+      note: '',
+      milestones: [
+        { text: 'BRD drafted with business stakeholders', phase: 'Discovery', done: true },
+        { text: 'Technical feasibility review', phase: 'Discovery', done: false },
+        { text: 'Remittance format standardization (820/835)', phase: 'Build', done: false },
+        { text: 'AP/AR system integration', phase: 'Build', done: false },
+        { text: 'Pilot with 3 vendors', phase: 'Test', done: false },
+        { text: 'Full rollout', phase: 'Ship', done: false },
+      ]
+    },
+    {
+      id: 'posnapshot', open: false, rag: 'a',
+      name: 'PO Snapshot & E2E Reconciliation Dashboard',
+      meta: 'Target: Q3 2025',
+      note: '',
+      milestones: [
+        { text: 'PO data model & source systems audit', phase: 'Discovery', done: true },
+        { text: 'Dashboard wireframes approved', phase: 'Discovery', done: false },
+        { text: 'Real-time PO snapshot data pipeline', phase: 'Build', done: false },
+        { text: '3-way match reconciliation logic', phase: 'Build', done: false },
+        { text: 'Exception workflow & alerts', phase: 'Build', done: false },
+        { text: 'Finance ops launch & training', phase: 'Ship', done: false },
+      ]
+    },
+    {
+      id: 'inboundai', open: false, rag: 'r',
+      name: 'Inbound Agentic AI — Amazon Business',
+      meta: 'Target: Q3 2025',
+      note: '',
+      milestones: [
+        { text: 'Use case definition & scope lock', phase: 'Discovery', done: false },
+        { text: 'Amazon Business API access & auth setup', phase: 'Discovery', done: false },
+        { text: 'Agent architecture (Amazon Bedrock)', phase: 'Build', done: false },
+        { text: 'Inbound order handling & routing logic', phase: 'Build', done: false },
+        { text: 'Human-in-the-loop review workflow', phase: 'Build', done: false },
+        { text: 'Pilot run & feedback loop', phase: 'Test', done: false },
+        { text: 'Production rollout', phase: 'Ship', done: false },
+      ]
+    }
+  ],
+  weight: {
+    current: 185,
+    target: 165,
+    unit: 'lbs',
+    log: [190, 189, 188, 187, 186, 185]
+  },
+  fitness: {
+    goal: 4,
+    week: [false, true, false, true, false, false, false]
+  },
+  home: [
+    { text: 'Kitchen — cabinets & countertops', cost: '$8,000', done: false },
+    { text: 'Replace HVAC system', cost: '$6,500', done: false },
+    { text: 'Backyard deck & landscaping', cost: '$4,000', done: false },
+    { text: 'Master bathroom remodel', cost: '$5,000', done: false },
+    { text: 'Smart home (security, lighting, thermostat)', cost: '$1,200', done: false },
+    { text: 'Garage organization & epoxy floor', cost: '$800', done: true },
+  ]
+};
+
+function save() { localStorage.setItem('mlp2', JSON.stringify(D)); }
+
+// ══════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════
+function go(id, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  render();
+}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+const RAG = {
+  g: { cls: 'g', label: 'On Track',  next: 'a' },
+  a: { cls: 'a', label: 'At Risk',   next: 'r' },
+  r: { cls: 'r', label: 'Blocker',   next: 'g' }
+};
+
+function msStats(p) {
+  const done = p.milestones.filter(m => m.done).length;
+  const total = p.milestones.length;
+  return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
+}
+
+// ══════════════════════════════════════════
+// PROJECT RENDERING
+// ══════════════════════════════════════════
+function projectHTML(p, compact = false) {
+  const r = RAG[p.rag];
+  const { done, total, pct } = msStats(p);
+
+  if (compact) {
+    return `
+    <div class="project-block" style="animation-delay:${D.projects.indexOf(p)*0.05}s">
+      <div class="project-row" onclick="toggleProject('${p.id}')">
+        <div>
+          <div class="project-name">${p.name}</div>
+          <div class="project-meta">${p.meta} &nbsp;·&nbsp; ${done}/${total} milestones</div>
+        </div>
+        <button class="rag-btn" onclick="event.stopPropagation(); cycleRag('${p.id}')">
+          <div class="rag-dot ${r.cls}"></div>
+          <span class="rag-text ${r.cls}">${r.label}</span>
+        </button>
+        <div class="chevron">${p.open ? '▶' : '▶'}</div>
+      </div>
+      ${p.open ? milestonePanelHTML(p, pct) : ''}
+    </div>`;
+  }
+
+  return `
+  <div class="project-block ${p.open ? 'open' : ''}" id="pb-${p.id}">
+    <div class="project-row" onclick="toggleProject('${p.id}')">
+      <div>
+        <div class="project-name">${p.name}</div>
+        <div class="project-meta">${p.meta} &nbsp;·&nbsp; ${done}/${total} milestones</div>
+      </div>
+      <button class="rag-btn" onclick="event.stopPropagation(); cycleRag('${p.id}')">
+        <div class="rag-dot ${r.cls}"></div>
+        <span class="rag-text ${r.cls}">${r.label}</span>
+      </button>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="milestone-panel">
+      ${milestonePanelHTML(p, pct)}
+    </div>
+  </div>`;
+}
+
+function milestonePanelHTML(p, pct) {
+  const rows = p.milestones.map((m, i) => `
+    <div class="ms-row" onclick="toggleMS('${p.id}', ${i})">
+      <div class="ms-box ${m.done ? 'done' : ''}"></div>
+      <span class="ms-text ${m.done ? 'done' : ''}">${m.text}</span>
+      <span class="ms-phase">${m.phase}</span>
+    </div>`).join('');
+
+  return `
+    <div class="milestone-list">${rows}</div>
+    <div class="ms-progress">
+      <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${pct}%"></div></div>
+      <span class="ms-prog-pct">${pct}% complete</span>
+    </div>
+    <div class="ms-notes-row">
+      <input class="ms-notes-input" placeholder="Add note or blocker…"
+        value="${(D.projects.find(x=>x.id===p.id)||{}).note||''}"
+        onchange="saveNote('${p.id}', this.value)"
+        onclick="event.stopPropagation()">
+      <span class="ms-notes-saved" id="ns-${p.id}"></span>
+    </div>`;
+}
+
+function toggleProject(id) {
+  const p = D.projects.find(x => x.id === id);
+  p.open = !p.open;
+  save();
+  render();
+}
+
+function cycleRag(id) {
+  const p = D.projects.find(x => x.id === id);
+  p.rag = RAG[p.rag].next;
+  save();
+  render();
+}
+
+function toggleMS(pid, idx) {
+  const p = D.projects.find(x => x.id === pid);
+  p.milestones[idx].done = !p.milestones[idx].done;
+  save();
+  render();
+}
+
+function saveNote(pid, val) {
+  const p = D.projects.find(x => x.id === pid);
+  p.note = val;
+  save();
+  const el = document.getElementById('ns-' + pid);
+  if (el) { el.textContent = 'saved'; setTimeout(() => el.textContent = '', 1500); }
+}
+
+// ══════════════════════════════════════════
+// WEIGHT
+// ══════════════════════════════════════════
+function weightHTML() {
+  const w = D.weight;
+  const lost = (w.log[0] - w.current).toFixed(1);
+  const toGo = (w.current - w.target).toFixed(1);
+  const progress = Math.max(0, Math.min(100, Math.round(((w.log[0] - w.current) / (w.log[0] - w.target)) * 100)));
+
+  const allVals = [...w.log, w.target];
+  const maxV = Math.max(...allVals), minV = Math.min(...allVals);
+  const range = maxV - minV || 1;
+  const barH = v => Math.max(4, Math.round(((v - minV) / range) * 30));
+
+  const bars = w.log.map((v, i) => {
+    const isLatest = i === w.log.length - 1;
+    return `<div class="spark-bar ${isLatest ? 'spark-latest' : 'spark-log'}" style="height:${barH(v)}px" title="${v} ${w.unit}"></div>`;
+  });
+  bars.push(`<div class="spark-bar spark-target" style="height:${barH(w.target)}px" title="Target ${w.target}"></div>`);
+
+  return `
+  <div class="weight-readout">
+    <div class="weight-cell">
+      <div class="weight-cell-label">Current</div>
+      <div class="weight-cell-val">${w.current} <span style="font-size:13px;color:var(--mid)">${w.unit}</span></div>
+    </div>
+    <div class="weight-cell">
+      <div class="weight-cell-label">Target</div>
+      <div class="weight-cell-val accent">${w.target} <span style="font-size:13px;color:var(--mid)">${w.unit}</span></div>
+    </div>
+    <div class="weight-cell">
+      <div class="weight-cell-label">To Go</div>
+      <div class="weight-cell-val amber">${toGo} <span style="font-size:13px;color:var(--mid)">${w.unit}</span></div>
+    </div>
+  </div>
+
+  <div class="section-label">TREND — ${w.log.length} entries · lost ${lost} ${w.unit} · <span style="color:var(--accent)">lime bar = target</span></div>
+  <div class="sparkline">${bars.join('')}</div>
+
+  <div class="ms-progress" style="margin-bottom:20px">
+    <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${progress}%"></div></div>
+    <span class="ms-prog-pct">${progress}% to goal</span>
+  </div>
+
+  <div class="section-label">LOG WEIGHT</div>
+  <div class="log-row">
+    <input class="log-field" id="w-input" type="number" step="0.1" placeholder="e.g. 184.5">
+    <select class="log-field" id="w-unit" style="width:80px">
+      <option ${w.unit==='lbs'?'selected':''}>lbs</option>
+      <option ${w.unit==='kg'?'selected':''}>kg</option>
+    </select>
+    <button class="btn" onclick="logWeight()">Log</button>
+  </div>
+
+  <div style="margin-top:20px">
+    <div class="section-label">LOG HISTORY</div>
+    ${w.log.slice().reverse().map((v, i) => `
+      <div class="ms-row" style="cursor:default">
+        <span class="ms-text" style="color:var(--mid)">Entry ${w.log.length - i}</span>
+        <span class="ms-phase">${v} ${w.unit}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function logWeight() {
+  const val = parseFloat(document.getElementById('w-input').value);
+  const unit = document.getElementById('w-unit').value;
+  if (!val || val < 50 || val > 600) return;
+  D.weight.current = val;
+  D.weight.unit = unit;
+  D.weight.log.push(val);
+  if (D.weight.log.length > 14) D.weight.log.shift();
+  document.getElementById('w-input').value = '';
+  save();
+  render();
+}
+
+// ══════════════════════════════════════════
+// FITNESS
+// ══════════════════════════════════════════
+function fitnessHTML() {
+  const f = D.fitness;
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const done = f.week.filter(Boolean).length;
+  const pct = Math.round(done / f.goal * 100);
+
+  const dayBtns = days.map((d, i) => `
+    <div class="day-btn ${f.week[i] ? 'done' : ''}" onclick="toggleDay(${i})">
+      <div class="day-btn-label">${d}</div>
+      <div class="day-btn-mark">${f.week[i] ? '✓' : '·'}</div>
+    </div>`).join('');
+
+  return `
+  <div class="fitness-stats">
+    <div class="fit-stat">
+      <div class="fit-stat-label">This Week</div>
+      <div class="fit-stat-val">${done}<span style="font-size:13px;color:var(--mid)"> / ${f.goal}</span></div>
+    </div>
+    <div class="fit-stat">
+      <div class="fit-stat-label">Goal</div>
+      <div class="fit-stat-val">${f.goal}<span style="font-size:13px;color:var(--mid)"> / week</span></div>
+    </div>
+    <div class="fit-stat">
+      <div class="fit-stat-label">Status</div>
+      <div class="fit-stat-val" style="font-size:14px;color:${done>=f.goal?'var(--accent)':done>=Math.ceil(f.goal/2)?'var(--amber)':'var(--red)'}">${done>=f.goal?'✓ Met':done>=Math.ceil(f.goal/2)?'On Track':'Behind'}</div>
+    </div>
+  </div>
+
+  <div class="section-label">THIS WEEK — tap to toggle</div>
+  <div class="week-row">${dayBtns}</div>
+
+  <div class="ms-progress" style="margin-bottom:20px">
+    <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${Math.min(pct,100)}%"></div></div>
+    <span class="ms-prog-pct">${pct}% of weekly goal</span>
+  </div>
+
+  <div class="section-label">WEEKLY GOAL</div>
+  <div class="log-row">
+    <input class="log-field" id="goal-input" type="number" min="1" max="7" value="${f.goal}" style="width:80px">
+    <button class="btn-ghost" onclick="setGoal()">Update Goal</button>
+  </div>`;
+}
+
+function toggleDay(i) {
+  D.fitness.week[i] = !D.fitness.week[i];
+  save();
+  render();
+}
+
+function setGoal() {
+  const v = parseInt(document.getElementById('goal-input').value);
+  if (v >= 1 && v <= 7) { D.fitness.goal = v; save(); render(); }
+}
+
+// ══════════════════════════════════════════
+// HOME
+// ══════════════════════════════════════════
+function homeHTML() {
+  const items = D.home;
+  const done = items.filter(i => i.done).length;
+  const total = items.length;
+  const cost = items.filter(i => !i.done).reduce((a, i) => a + parseInt(i.cost.replace(/[^0-9]/g,'')), 0);
+
+  const rows = items.map((item, i) => `
+    <div class="home-row" onclick="toggleHome(${i})">
+      <div class="home-box ${item.done ? 'done' : ''}"></div>
+      <div class="home-item-name ${item.done ? 'done' : ''}">${item.text}</div>
+      <div class="home-item-cost">${item.cost}</div>
+    </div>`).join('');
+
+  return `
+  <div class="fitness-stats" style="margin-bottom:20px">
+    <div class="fit-stat">
+      <div class="fit-stat-label">Done</div>
+      <div class="fit-stat-val">${done}<span style="font-size:13px;color:var(--mid)"> / ${total}</span></div>
+    </div>
+    <div class="fit-stat">
+      <div class="fit-stat-label">Remaining Budget</div>
+      <div class="fit-stat-val" style="font-size:14px">$${cost.toLocaleString()}</div>
+    </div>
+    <div class="fit-stat">
+      <div class="fit-stat-label">Progress</div>
+      <div class="fit-stat-val">${Math.round(done/total*100)}<span style="font-size:13px;color:var(--mid)">%</span></div>
+    </div>
+  </div>
+
+  <div class="ms-progress" style="margin-bottom:20px">
+    <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${Math.round(done/total*100)}%"></div></div>
+    <span class="ms-prog-pct">${done}/${total} complete</span>
+  </div>
+
+  <div>${rows}</div>`;
+}
+
+function toggleHome(i) {
+  D.home[i].done = !D.home[i].done;
+  save();
+  render();
+}
+
+// ══════════════════════════════════════════
+// TECH
+// ══════════════════════════════════════════
+function techHTML() {
+  return `
+  <div class="tech-two-col">
+    <div class="tech-block">
+      <div class="tech-block-title">Web App</div>
+      <div class="stack-row">React + Vite<span class="stack-row-right">SPA framework</span></div>
+      <div class="stack-row">Tailwind CSS<span class="stack-row-right">Styling</span></div>
+      <div class="stack-row">React Query<span class="stack-row-right">Data layer</span></div>
+      <div class="stack-row">Recharts<span class="stack-row-right">Dashboards</span></div>
+      <div class="stack-row">Vercel<span class="stack-row-right">Hosting</span></div>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-title">Mobile App</div>
+      <div class="stack-row">React Native + Expo<span class="stack-row-right">iOS & Android</span></div>
+      <div class="stack-row">Expo EAS<span class="stack-row-right">OTA builds</span></div>
+      <div class="stack-row">Push Notifications<span class="stack-row-right">Daily nudges</span></div>
+      <div class="stack-row">SQLite local<span class="stack-row-right">Offline-first</span></div>
+      <div class="stack-row">App Store / Play<span class="stack-row-right">Distribution</span></div>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-title">Backend</div>
+      <div class="stack-row">Supabase<span class="stack-row-right">DB + Auth + Realtime</span></div>
+      <div class="stack-row">PostgreSQL<span class="stack-row-right">Projects & goals</span></div>
+      <div class="stack-row">Row-level security<span class="stack-row-right">Private data</span></div>
+      <div class="stack-row">Edge Functions<span class="stack-row-right">Serverless logic</span></div>
+      <div class="stack-row">Google SSO<span class="stack-row-right">Auth</span></div>
+    </div>
+    <div class="tech-block">
+      <div class="tech-block-title">AI / Agentic Layer</div>
+      <div class="stack-row">Claude API<span class="stack-row-right">Reasoning engine</span></div>
+      <div class="stack-row">Amazon Bedrock<span class="stack-row-right">Inbound AI agent</span></div>
+      <div class="stack-row">LangChain<span class="stack-row-right">Orchestration</span></div>
+      <div class="stack-row">pgvector<span class="stack-row-right">RAG / context</span></div>
+      <div class="stack-row">Webhooks<span class="stack-row-right">Event triggers</span></div>
+    </div>
+  </div>
+
+  <div class="tech-block" style="margin-bottom:0">
+    <div class="tech-block-title">Build Roadmap</div>
+    <div class="roadmap">
+      <div class="rm-item">
+        <div class="rm-dot done"></div>
+        <div class="rm-phase">Phase 0 — Now</div>
+        <div class="rm-title">This Dashboard (HTML MLP)</div>
+        <div class="rm-desc">Track projects & personal goals locally. Validate the data model. No infrastructure needed. Ship immediately.</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-dot now"></div>
+        <div class="rm-phase">Phase 1 — Weeks 1–3</div>
+        <div class="rm-title">Web App + Supabase Backend</div>
+        <div class="rm-desc">React SPA · Google SSO · Project & goal CRUD · Realtime dashboard · Deploy to Vercel</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-dot"></div>
+        <div class="rm-phase">Phase 2 — Weeks 4–6</div>
+        <div class="rm-title">Mobile App (React Native / Expo)</div>
+        <div class="rm-desc">iOS + Android · Push reminders · Quick-log weight & workouts · Offline-first sync</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-dot"></div>
+        <div class="rm-phase">Phase 3 — Weeks 7–10</div>
+        <div class="rm-title">Inbound Agentic AI (Amazon Business)</div>
+        <div class="rm-desc">Amazon Bedrock agent · Order handling & routing · Human-in-the-loop review · Claude API summaries</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-dot"></div>
+        <div class="rm-phase">Phase 4 — Ongoing</div>
+        <div class="rm-title">E2E Reconciliation Live Data</div>
+        <div class="rm-desc">Shipping charges + PO snapshot pipelines · Electronic remittance BRD integrated · Automated anomaly alerts</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard() {
+  // Overview stats
+  const totalMs = D.projects.reduce((a, p) => a + p.milestones.filter(m => m.done).length, 0);
+  const totalAll = D.projects.reduce((a, p) => a + p.milestones.length, 0);
+  const atRisk = D.projects.filter(p => p.rag !== 'g').length;
+  const wDone = D.fitness.week.filter(Boolean).length;
+
+  document.getElementById('dash-overview').innerHTML = `
+    <div class="ov-card">
+      <div class="ov-label">Work Milestones</div>
+      <div class="ov-value">${totalMs}<span style="font-size:18px;color:var(--dim)">/${totalAll}</span></div>
+      <div class="ov-sub">${Math.round(totalMs/totalAll*100)}% across all projects</div>
+    </div>
+    <div class="ov-card">
+      <div class="ov-label">At Risk / Blocked</div>
+      <div class="ov-value" style="color:${atRisk>0?'var(--amber)':'var(--accent)'}">${atRisk}</div>
+      <div class="ov-sub">of 4 work projects</div>
+    </div>
+    <div class="ov-card">
+      <div class="ov-label">Weight to Goal</div>
+      <div class="ov-value">${(D.weight.current - D.weight.target).toFixed(0)}<span style="font-size:18px;color:var(--dim)"> ${D.weight.unit}</span></div>
+      <div class="ov-sub">Current: ${D.weight.current} · Target: ${D.weight.target}</div>
+    </div>
+    <div class="ov-card">
+      <div class="ov-label">Workouts This Week</div>
+      <div class="ov-value" style="color:${wDone>=D.fitness.goal?'var(--accent)':'var(--text)'}">${wDone}<span style="font-size:18px;color:var(--dim)">/${D.fitness.goal}</span></div>
+      <div class="ov-sub">${wDone>=D.fitness.goal?'Goal met ✓':'Keep going'}</div>
+    </div>`;
+
+  // Work projects (compact)
+  document.getElementById('dash-work').innerHTML =
+    D.projects.map(p => projectHTML(p, false)).join('');
+
+  // Personal strip
+  const homeDone = D.home.filter(i => i.done).length;
+  const homeTotal = D.home.length;
+  document.getElementById('dash-personal').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="goal-block open">
+        <div class="goal-header" onclick="go('weight', document.querySelector('.nav a:nth-child(4)'))">
+          <div class="goal-label-row">
+            <span class="goal-icon">⚖️</span>
+            <div>
+              <div class="goal-name">Weight</div>
+              <div class="goal-summary">${D.weight.current} → ${D.weight.target} ${D.weight.unit}</div>
+            </div>
+          </div>
+          <div class="goal-pct">${Math.max(0,Math.round(((D.weight.log[0]-D.weight.current)/(D.weight.log[0]-D.weight.target))*100))}%</div>
+        </div>
+        <div class="goal-body" style="display:block;padding:12px 20px">
+          <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${Math.max(0,Math.round(((D.weight.log[0]-D.weight.current)/(D.weight.log[0]-D.weight.target))*100))}%"></div></div>
+        </div>
+      </div>
+      <div class="goal-block open">
+        <div class="goal-header" onclick="go('fitness', null)">
+          <div class="goal-label-row">
+            <span class="goal-icon">💪</span>
+            <div>
+              <div class="goal-name">Fitness</div>
+              <div class="goal-summary">${wDone}/${D.fitness.goal} workouts this week</div>
+            </div>
+          </div>
+          <div class="goal-pct" style="color:${wDone>=D.fitness.goal?'var(--accent)':'var(--text)'}">${wDone}/${D.fitness.goal}</div>
+        </div>
+        <div class="goal-body" style="display:block;padding:12px 20px">
+          <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${Math.min(100,Math.round(wDone/D.fitness.goal*100))}%"></div></div>
+        </div>
+      </div>
+      <div class="goal-block open">
+        <div class="goal-header" onclick="go('home', null)">
+          <div class="goal-label-row">
+            <span class="goal-icon">🏡</span>
+            <div>
+              <div class="goal-name">Home Improvement</div>
+              <div class="goal-summary">${homeDone}/${homeTotal} projects done</div>
+            </div>
+          </div>
+          <div class="goal-pct">${Math.round(homeDone/homeTotal*100)}%</div>
+        </div>
+        <div class="goal-body" style="display:block;padding:12px 20px">
+          <div class="ms-prog-bar"><div class="ms-prog-fill" style="width:${Math.round(homeDone/homeTotal*100)}%"></div></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+// MASTER RENDER
+// ══════════════════════════════════════════
+function render() {
+  const active = document.querySelector('.view.active');
+  if (!active) return;
+  const id = active.id.replace('view-','');
+
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'work') document.getElementById('work-list').innerHTML = D.projects.map(p => projectHTML(p, false)).join('');
+  if (id === 'weight') document.getElementById('weight-body').innerHTML = weightHTML();
+  if (id === 'fitness') document.getElementById('fitness-body').innerHTML = fitnessHTML();
+  if (id === 'home') document.getElementById('home-body').innerHTML = homeHTML();
+  if (id === 'tech') document.getElementById('tech-body').innerHTML = techHTML();
+}
+
+// ══════════════════════════════════════════
+// DATE
+// ══════════════════════════════════════════
+const now = new Date();
+document.getElementById('date-stamp').textContent =
+  now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+// INIT
+render();
+</script>
+</body>
+</html>
