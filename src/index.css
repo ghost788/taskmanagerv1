@@ -1,0 +1,46 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:      #f5f5f2;
+  --s1:      #ffffff;
+  --s2:      #f0efeb;
+  --s3:      #e8e7e2;
+  --border:  #e0dfd9;
+  --border2: #ceccc5;
+  --text:    #1a1a18;
+  --mid:     #6b6960;
+  --dim:     #a8a59c;
+  --accent:  #5a7a00;
+  --red:     #c0392b;
+  --amber:   #b36a00;
+  --mono:    'IBM Plex Mono', monospace;
+  --sans:    'IBM Plex Sans', sans-serif;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+button { cursor: pointer; }
+
+input, select, textarea {
+  font-family: var(--mono);
+}
+
+@keyframes in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in { animation: in 0.2s ease both; }
