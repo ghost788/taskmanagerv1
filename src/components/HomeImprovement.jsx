@@ -70,7 +70,7 @@ export default function HomeImprovement({ userId }) {
     .reduce((sum, i) => sum + parseInt((i.cost || '0').replace(/[^0-9]/g, '')), 0)
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="page-pad">
       <SectionLabel>HOME IMPROVEMENT — P0</SectionLabel>
 
       {/* Stats */}

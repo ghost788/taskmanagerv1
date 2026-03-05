@@ -17,7 +17,7 @@ const ROADMAP = [
 
 export default function TechPlan() {
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="page-pad">
       <SectionLabel>STACK</SectionLabel>
       <div style={styles.techGrid}>
         {STACK.map(block => (

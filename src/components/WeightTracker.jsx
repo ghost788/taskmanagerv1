@@ -69,7 +69,7 @@ export default function WeightTracker({ userId }) {
   const barH = v => Math.max(4, Math.round(((v - minV) / range) * 40))
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="page-pad">
       <SectionLabel>WEIGHT — P0</SectionLabel>
 
       {/* Readout grid */}

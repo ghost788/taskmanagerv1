@@ -48,9 +48,9 @@ export default function Dashboard({ userId, onNavigate }) {
   ]
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="page-pad">
       {/* Overview grid */}
-      <div style={styles.ovGrid}>
+      <div style={styles.ovGrid} className="grid-4">
         {overviewCells.map((c, i) => (
           <div key={i} style={styles.ovCell}>
             <div style={styles.ovLabel}>{c.label}</div>
@@ -85,7 +85,7 @@ export default function Dashboard({ userId, onNavigate }) {
 
       {/* Personal goals strip */}
       <SectionLabel style={{ marginTop: '28px' }}>PERSONAL GOALS — P0</SectionLabel>
-      <div style={styles.goalRow}>
+      <div style={styles.goalRow} className="grid-3">
         {[
           {
             icon: '⚖️', label: 'Weight', view: 'weight',
@@ -135,6 +135,7 @@ const styles = {
     gap: '1px', background: 'var(--border)',
     border: '1px solid var(--border)', borderRadius: '4px',
     overflow: 'hidden',
+    // mobile override via className grid-4
   },
   ovCell: { background: 'var(--s1)', padding: '18px' },
   ovLabel: { fontFamily: 'var(--mono)', fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--dim)', marginBottom: '8px' },

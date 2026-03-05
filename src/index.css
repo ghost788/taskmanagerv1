@@ -15,6 +15,8 @@
   --amber:   #b36a00;
   --mono:    'IBM Plex Mono', monospace;
   --sans:    'IBM Plex Sans', sans-serif;
+  --pad:     28px 32px;        /* desktop content padding */
+  --pad-m:   16px 16px;        /* mobile content padding */
 }
 
 html, body, #root { height: 100%; }
@@ -26,21 +28,53 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
 }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-button { cursor: pointer; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
-input, select, textarea {
-  font-family: var(--mono);
+input, select, textarea { font-family: var(--mono); }
+
+/* Responsive content padding */
+.page-pad { padding: var(--pad); }
+@media (max-width: 767px) {
+  .page-pad { padding: var(--pad-m); }
+}
+
+/* Responsive grid: 4-col on desktop, 2-col on mobile */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 767px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Responsive grid: 3-col on desktop, 1-col on mobile */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 767px) {
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* Responsive habit grid */
+.habit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+@media (max-width: 767px) {
+  .habit-grid { grid-template-columns: 1fr; }
+}
+
+/* Prevent fixed-width inputs from overflowing on mobile */
+@media (max-width: 767px) {
+  input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea, select {
+    max-width: 100%;
+  }
+  /* Larger tap targets */
+  button { min-height: 36px; }
 }
 
 @keyframes in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 .animate-in { animation: in 0.2s ease both; }

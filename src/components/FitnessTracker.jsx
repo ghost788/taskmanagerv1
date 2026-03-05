@@ -66,7 +66,7 @@ export default function FitnessTracker({ userId }) {
   const statusColor = done >= goal ? 'var(--accent)' : done >= Math.ceil(goal / 2) ? 'var(--amber)' : 'var(--red)'
 
   return (
-    <div style={{ padding: '28px 32px' }}>
+    <div className="page-pad">
       <SectionLabel>FITNESS — P0</SectionLabel>
 
       {/* Stats */}
