@@ -107,27 +107,84 @@ function EtaBadge({ eta, onSave }) {
   )
 }
 
+// ─── Reassign modal ───────────────────────────────────
+function ReassignModal({ action, projects, milestones, onSave, onClose }) {
+  const [projectId, setProjectId]     = useState(action.project_id || '')
+  const [milestoneId, setMilestoneId] = useState(action.milestone_id || '')
+  const pMs = milestones.filter(m => m.project_id === projectId)
+
+  async function submit() {
+    if (!projectId) return
+    await onSave(action, { project_id: projectId, milestone_id: milestoneId || null })
+    onClose()
+  }
+
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={S.modal} onClick={e => e.stopPropagation()}>
+        <div style={S.modalTitle}>REASSIGN ACTION</div>
+        <div style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '16px' }}>"{action.text}"</div>
+
+        <div style={{ marginBottom: '12px' }}>
+          <div style={S.fieldLabel}>PROJECT</div>
+          <select style={S.select} value={projectId} onChange={e => { setProjectId(e.target.value); setMilestoneId('') }} autoFocus>
+            <option value="">— Select project —</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+
+        {pMs.length > 0 && (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={S.fieldLabel}>MILESTONE (optional)</div>
+            <select style={S.select} value={milestoneId} onChange={e => setMilestoneId(e.target.value)}>
+              <option value="">— Project level —</option>
+              {pMs.map(m => <option key={m.id} value={m.id}>{m.text}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          <button style={S.btnPrimary} onClick={submit} disabled={!projectId}>Save</button>
+          <button style={S.btnGhost} onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Action row ───────────────────────────────────────
-function ActionRow({ action, onToggle, onUpdate, onDelete, showMilestone, milestones }) {
-  const [editingEta, setEditingEta] = useState(false)
+function ActionRow({ action, onToggle, onUpdate, onDelete, showMilestone, milestones, projects }) {
+  const [showReassign, setShowReassign] = useState(false)
   const ms = milestones?.find(m => m.id === action.milestone_id)
 
   return (
-    <div style={{ ...S.actionRow, opacity: action.done ? 0.6 : 1 }}>
-      <div style={{ ...S.checkBox, ...(action.done ? S.checkBoxDone : {}) }} onClick={() => onToggle(action)}>
-        {action.done && <span style={S.checkMark}>✓</span>}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <Editable value={action.text} onSave={text => onUpdate(action, { text })}
-          style={{ fontSize: '13px', color: action.done ? 'var(--dim)' : 'var(--text)', textDecoration: action.done ? 'line-through' : 'none' }} />
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px', flexWrap: 'wrap' }}>
-          {showMilestone && ms && <span style={S.msBadge}>↳ {ms.text}</span>}
-          {action.recurring && <span style={S.recurBadge}>↻ {action.frequency}</span>}
+    <>
+      <div style={{ ...S.actionRow, opacity: action.done ? 0.6 : 1 }}>
+        <div style={{ ...S.checkBox, ...(action.done ? S.checkBoxDone : {}) }} onClick={() => onToggle(action)}>
+          {action.done && <span style={S.checkMark}>✓</span>}
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Editable value={action.text} onSave={text => onUpdate(action, { text })}
+            style={{ fontSize: '13px', color: action.done ? 'var(--dim)' : 'var(--text)', textDecoration: action.done ? 'line-through' : 'none' }} />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px', flexWrap: 'wrap' }}>
+            {showMilestone && ms && <span style={S.msBadge}>↳ {ms.text}</span>}
+            {action.recurring && <span style={S.recurBadge}>↻ {action.frequency}</span>}
+          </div>
+        </div>
+        <EtaBadge eta={action.eta} onSave={v => onUpdate(action, { eta: v })} />
+        <button style={{ ...S.iconBtn, fontSize: '13px', opacity: 0.5 }} onClick={() => setShowReassign(true)} title="Reassign to different project/milestone">↗</button>
+        <DeleteBtn onConfirm={() => onDelete(action)} />
       </div>
-      <EtaBadge eta={action.eta} onSave={v => onUpdate(action, { eta: v })} />
-      <DeleteBtn onConfirm={() => onDelete(action)} />
-    </div>
+      {showReassign && (
+        <ReassignModal
+          action={action}
+          projects={projects || []}
+          milestones={milestones || []}
+          onSave={onUpdate}
+          onClose={() => setShowReassign(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -163,7 +220,7 @@ function AddActionForm({ onAdd, milestones = [], defaultMilestoneId = null }) {
 }
 
 // ─── Milestone row ────────────────────────────────────
-function MilestoneRow({ ms, actions, onToggle, onUpdate, onDelete, onAddAction, onToggleAction, onUpdateAction, onDeleteAction }) {
+function MilestoneRow({ ms, actions, onToggle, onUpdate, onDelete, onAddAction, onToggleAction, onUpdateAction, onDeleteAction, allMilestones, projects }) {
   const [showActions, setShowActions] = useState(false)
   const msActions = actions.filter(a => a.milestone_id === ms.id).sort(byEta)
 
@@ -192,7 +249,7 @@ function MilestoneRow({ ms, actions, onToggle, onUpdate, onDelete, onAddAction, 
       {showActions && (
         <div style={S.actionsNest}>
           {msActions.length === 0 && <div style={{ ...S.dimText, padding: '4px 0 2px' }}>No actions yet</div>}
-          {msActions.map(a => <ActionRow key={a.id} action={a} onToggle={onToggleAction} onUpdate={onUpdateAction} onDelete={onDeleteAction} />)}
+          {msActions.map(a => <ActionRow key={a.id} action={a} onToggle={onToggleAction} onUpdate={onUpdateAction} onDelete={onDeleteAction} milestones={allMilestones} projects={projects} />)}
           <AddActionForm onAdd={(text, eta) => onAddAction(text, eta, ms.id)} />
         </div>
       )}
@@ -251,7 +308,7 @@ function byEta(a, b) {
 }
 
 // ─── Project card ─────────────────────────────────────
-function ProjectCard({ project, milestones, actions, onUpdate, onDelete, onAddMilestone, onToggleMilestone, onUpdateMilestone, onDeleteMilestone, onAddAction, onToggleAction, onUpdateAction, onDeleteAction }) {
+function ProjectCard({ project, milestones, actions, projects, onUpdate, onDelete, onAddMilestone, onToggleMilestone, onUpdateMilestone, onDeleteMilestone, onAddAction, onToggleAction, onUpdateAction, onDeleteAction }) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('milestones')
 
@@ -313,7 +370,8 @@ function ProjectCard({ project, milestones, actions, onUpdate, onDelete, onAddMi
                   <MilestoneRow key={ms.id} ms={ms} actions={actions}
                     onToggle={onToggleMilestone} onUpdate={onUpdateMilestone} onDelete={onDeleteMilestone}
                     onAddAction={onAddAction} onToggleAction={onToggleAction}
-                    onUpdateAction={onUpdateAction} onDeleteAction={onDeleteAction} />
+                    onUpdateAction={onUpdateAction} onDeleteAction={onDeleteAction}
+                    allMilestones={milestones} projects={projects} />
                 ))}
                 <AddMilestoneForm onAdd={(text, phase, eta) => onAddMilestone(project.id, text, phase, pMs.length, eta)} />
               </>
@@ -326,7 +384,7 @@ function ProjectCard({ project, milestones, actions, onUpdate, onDelete, onAddMi
                 {allProjectActions.map(a => (
                   <ActionRow key={a.id} action={a}
                     onToggle={onToggleAction} onUpdate={onUpdateAction} onDelete={onDeleteAction}
-                    showMilestone={true} milestones={pMs} />
+                    showMilestone={true} milestones={pMs} projects={projects} />
                 ))}
                 {/* Add action — can assign to any milestone or project level */}
                 <AddActionForm
@@ -463,7 +521,7 @@ export default function WorkProjects({ userId }) {
         <span style={S.dimText}>Click any name to edit inline</span>
       </div>
       {projects.map(p => (
-        <ProjectCard key={p.id} project={p} milestones={milestones} actions={actions}
+        <ProjectCard key={p.id} project={p} milestones={milestones} actions={actions} projects={projects}
           onUpdate={updateProject} onDelete={deleteProject}
           onAddMilestone={addMilestone} onToggleMilestone={toggleMilestone}
           onUpdateMilestone={updateMilestone} onDeleteMilestone={deleteMilestone}
@@ -509,4 +567,11 @@ const S = {
   msBadge: { fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--dim)', background: 'var(--s2)', padding: '1px 6px', borderRadius: '2px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   recurBadge: { background: 'rgba(90,122,0,0.08)', color: 'var(--accent)', fontFamily: 'var(--mono)', fontSize: '9px', padding: '1px 5px', borderRadius: '2px' },
   dimText: { fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--dim)' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' },
+  modal: { background: 'var(--s1)', border: '1px solid var(--border)', borderRadius: '6px', padding: '24px', width: '100%', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' },
+  modalTitle: { fontFamily: 'var(--mono)', fontSize: '10px', letterSpacing: '0.15em', color: 'var(--dim)', marginBottom: '8px' },
+  fieldLabel: { fontFamily: 'var(--mono)', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--dim)', marginBottom: '5px' },
+  select: { width: '100%', background: 'var(--s2)', border: '1px solid var(--border)', borderRadius: '3px', padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--text)', outline: 'none' },
+  btnPrimary: { background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '3px', padding: '8px 16px', fontFamily: 'var(--mono)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+  btnGhost: { background: 'none', border: '1px solid var(--border)', borderRadius: '3px', padding: '8px 16px', fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--mid)', cursor: 'pointer' },
 }

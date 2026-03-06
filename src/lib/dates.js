@@ -1,19 +1,37 @@
-// ─── Date utilities ───────────────────────────────────
+// ─── Date utilities (all timezone-aware) ──────────────
+// Key rule: NEVER use .toISOString() for local date — it returns UTC.
+// Use localDateStr() everywhere instead.
+
+function pad(n) { return String(n).padStart(2, '0') }
+
+// Returns "YYYY-MM-DD" in the user's LOCAL timezone
+export function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 export function today() {
-  return new Date().toISOString().split('T')[0]
+  return localDateStr(new Date())
 }
 
 export function tomorrow() {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]
+  return localDateStr(d)
 }
 
 export function formatDate(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // Parse as local midnight to avoid off-by-one from UTC conversion
+  const [y, m, day] = dateStr.split('-').map(Number)
+  const d = new Date(y, m - 1, day)
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+export function formatDateLong(dateStr) {
+  if (!dateStr) return ''
+  const [y, m, day] = dateStr.split('-').map(Number)
+  const d = new Date(y, m - 1, day)
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 export function isPast(dateStr) {
@@ -44,51 +62,45 @@ export function etaColor(dateStr, done) {
   return 'var(--dim)'
 }
 
-// Next occurrence after a given date for a recurrence frequency
 export function nextOccurrence(fromDate, frequency) {
-  const d = new Date(fromDate + 'T00:00:00')
+  const [y, m, day] = fromDate.split('-').map(Number)
+  const d = new Date(y, m - 1, day)
   switch (frequency) {
     case 'daily':    d.setDate(d.getDate() + 1); break
     case 'weekly':   d.setDate(d.getDate() + 7); break
     case 'biweekly': d.setDate(d.getDate() + 14); break
     case 'monthly':  d.setMonth(d.getMonth() + 1); break
   }
-  return d.toISOString().split('T')[0]
+  return localDateStr(d)
 }
 
-// Get week start (Monday) for a given date string
-export function weekStart(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00')
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split('T')[0]
-}
-
-// Days between two date strings
 export function daysBetween(a, b) {
-  const da = new Date(a + 'T00:00:00')
-  const db = new Date(b + 'T00:00:00')
+  const [ay, am, ad] = a.split('-').map(Number)
+  const [by, bm, bd] = b.split('-').map(Number)
+  const da = new Date(ay, am - 1, ad)
+  const db = new Date(by, bm - 1, bd)
   return Math.round((db - da) / 86400000)
 }
 
-// Streak calculation: given sorted array of logged date strings,
-// returns { current, longest, lastMiss }
+// Streak: given sorted date strings, returns { current, longest, lastMiss }
 export function calcStreak(sortedDates) {
   if (!sortedDates.length) return { current: 0, longest: 0, lastMiss: null }
   const t = today()
-  let current = 0, longest = 0, streak = 0
-  let lastMiss = null
+  let current = 0, longest = 0, streak = 0, lastMiss = null
 
   // Walk backward from today
+  const checkDate = d => {
+    const [y, m, day] = d.split('-').map(Number)
+    const dt = new Date(y, m - 1, day)
+    dt.setDate(dt.getDate() - 1)
+    return localDateStr(dt)
+  }
+
   let check = t
   for (let i = sortedDates.length - 1; i >= 0; i--) {
-    const d = sortedDates[i]
-    if (d === check || d === t) {
+    if (sortedDates[i] === check || sortedDates[i] === t) {
       streak++
-      check = new Date(check + 'T00:00:00')
-      check.setDate(check.getDate() - 1)
-      check = check.toISOString().split('T')[0]
+      check = checkDate(check)
     } else {
       if (!lastMiss) lastMiss = check
       break
@@ -96,7 +108,6 @@ export function calcStreak(sortedDates) {
   }
   current = streak
 
-  // Longest streak pass
   streak = 1
   for (let i = 1; i < sortedDates.length; i++) {
     const diff = daysBetween(sortedDates[i - 1], sortedDates[i])
