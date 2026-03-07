@@ -1,29 +1,66 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Btn, SectionLabel, Spinner } from './UI'
-import { today, calcStreak, formatDate } from '../lib/dates'
+import { today, tomorrow, nextOccurrence, calcStreak, formatDate, localDateStr } from '../lib/dates'
 
 const FREQ_LABELS = { daily: 'Daily', weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' }
 const ICONS = ['💊', '🏃', '📖', '💧', '🧘', '✏️', '🥗', '😴', '🚶', '🎯', '🧠', '💪', '🌿', '☀️', '🛁']
 const DEFAULT_HABITS = [{ name: 'Multivitamins', icon: '💊', frequency: 'daily' }]
+
+// ─── Next due date for a habit based on its last log ──
+function nextDueDate(frequency, lastLogDate) {
+  if (!lastLogDate) return today()
+  const next = nextOccurrence(lastLogDate, frequency)
+  // If next is in the past (missed days), bring it to today
+  return next < today() ? today() : next
+}
+
+// ─── Ensure a pending action exists for a habit ───────
+// Called on load and after marking done. Returns the action.
+async function ensureHabitAction(userId, habit, logs, existingActions) {
+  const lastLog = logs.length ? logs[logs.length - 1].logged_date : null
+  const dueDate = nextDueDate(habit.frequency, lastLog)
+
+  // Don't create if already exists (pending or done) for that date
+  const alreadyExists = existingActions.some(
+    a => a.habit_id === habit.id && a.eta === dueDate
+  )
+  if (alreadyExists) return null
+
+  const { data } = await supabase.from('actions').insert({
+    user_id: userId,
+    habit_id: habit.id,
+    text: `${habit.icon} ${habit.name}`,
+    eta: dueDate,
+    done: false,
+    recurring: true,
+    frequency: habit.frequency,
+  }).select().single()
+
+  return data
+}
 
 function HeatMap({ logDates }) {
   const logSet = new Set(logDates)
   const days = []
   for (let i = 29; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i)
-    days.push(d.toISOString().split('T')[0])
+    days.push(localDateStr(d))
   }
   return (
     <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', marginTop: '8px' }}>
       {days.map(d => (
-        <div key={d} title={d + (logSet.has(d) ? ' ✓' : '')} style={{ width: '14px', height: '14px', borderRadius: '2px', background: logSet.has(d) ? 'var(--accent)' : 'var(--s3)', border: d === today() ? '1px solid var(--accent)' : '1px solid transparent' }} />
+        <div key={d} title={d + (logSet.has(d) ? ' ✓' : '')} style={{
+          width: '14px', height: '14px', borderRadius: '2px',
+          background: logSet.has(d) ? 'var(--accent)' : 'var(--s3)',
+          border: d === today() ? '1px solid var(--accent)' : '1px solid transparent',
+        }} />
       ))}
     </div>
   )
 }
 
-function HabitCard({ habit, logs, onToggleToday, onDelete, onEdit }) {
+function HabitCard({ habit, logs, habitAction, onToggleToday, onDelete, onEdit }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(habit.name)
   const [icon, setIcon] = useState(habit.icon)
@@ -48,6 +85,10 @@ function HabitCard({ habit, logs, onToggleToday, onDelete, onEdit }) {
     </div>
   )
 
+  // Next action info
+  const nextDue = habitAction?.eta
+  const nextDueLabel = nextDue === today() ? 'Due today' : nextDue === tomorrow() ? 'Due tomorrow' : nextDue ? `Due ${nextDue}` : null
+
   return (
     <div style={{ ...S.habitCard, borderTop: `3px solid ${doneToday ? 'var(--accent)' : 'var(--border)'}` }}>
       <div style={{ padding: '14px 16px' }}>
@@ -55,15 +96,21 @@ function HabitCard({ habit, logs, onToggleToday, onDelete, onEdit }) {
           <div style={S.iconDisplay}>{habit.icon}</div>
           <div style={{ flex: 1 }}>
             <div style={S.habitName}>{habit.name}</div>
-            <div style={S.dimText}>{FREQ_LABELS[habit.frequency]}</div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={S.dimText}>{FREQ_LABELS[habit.frequency]}</span>
+              {nextDueLabel && (
+                <span style={{ ...S.dimText, color: nextDue === today() ? 'var(--amber)' : 'var(--dim)' }}>· {nextDueLabel}</span>
+              )}
+            </div>
           </div>
           <button style={S.editBtn} onClick={() => setEditing(true)}>✎</button>
           <button style={{ ...S.editBtn, color: 'var(--red)', opacity: 0.4 }} onClick={() => onDelete(habit)}>✕</button>
         </div>
+
         <div style={S.streakRow}>
           {[
-            { val: current, label: 'Current streak', color: 'var(--text)' },
-            { val: longest, label: 'Longest streak', color: 'var(--accent)' },
+            { val: current,   label: 'Current streak', color: 'var(--text)' },
+            { val: longest,   label: 'Longest streak', color: 'var(--accent)' },
             { val: logDates.length, label: 'Total done', color: 'var(--text)' },
             { val: lastMiss ? formatDate(lastMiss) : '—', label: 'Last miss', color: lastMiss ? 'var(--amber)' : 'var(--dim)', small: true },
           ].map((s, i) => (
@@ -73,15 +120,18 @@ function HabitCard({ habit, logs, onToggleToday, onDelete, onEdit }) {
             </div>
           ))}
         </div>
+
         {lastMiss && current > 0 && (
           <div style={S.missNote}>⚠ Missed {formatDate(lastMiss)} — streak continued after recovery</div>
         )}
+
         <div style={{ marginTop: '12px' }}>
           <div style={S.fieldLabel}>LAST 30 DAYS</div>
           <HeatMap logDates={logDates} />
         </div>
+
         <button style={{ ...S.todayBtn, ...(doneToday ? S.todayBtnDone : {}) }} onClick={() => onToggleToday(habit)}>
-          {doneToday ? '✓ Done today — tap to undo' : 'Mark done today'}
+          {doneToday ? '✓ Done today — tap to undo' : `Mark done today`}
         </button>
       </div>
     </div>
@@ -125,57 +175,129 @@ function AddHabitForm({ onAdd, onClose }) {
 }
 
 export default function Habits({ userId }) {
-  const [habits, setHabits] = useState([])
-  const [logs, setLogs] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [habits, setHabits]     = useState([])
+  const [logs, setLogs]         = useState([])
+  const [actions, setActions]   = useState([]) // habit-linked actions
+  const [loading, setLoading]   = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [seeded, setSeeded] = useState(false)
+  const [seeded, setSeeded]     = useState(false)
 
   useEffect(() => { load() }, [userId])
 
   async function load() {
     setLoading(true)
-    const [{ data: hRows }, { data: lRows }] = await Promise.all([
+    const [{ data: hRows }, { data: lRows }, { data: aRows }] = await Promise.all([
       supabase.from('habits').select('*').eq('user_id', userId).order('position'),
       supabase.from('habit_logs').select('*').eq('user_id', userId).order('logged_date'),
+      supabase.from('actions').select('*').eq('user_id', userId).not('habit_id', 'is', null),
     ])
-    if (hRows && hRows.length > 0) { setHabits(hRows); setLogs(lRows || []) }
-    else if (!seeded) {
+
+    const loadedHabits  = hRows || []
+    const loadedLogs    = lRows || []
+    const loadedActions = aRows || []
+
+    if (loadedHabits.length > 0) {
+      setHabits(loadedHabits)
+      setLogs(loadedLogs)
+      // Ensure each habit has a pending action for its next due date
+      const newActions = [...loadedActions]
+      for (const habit of loadedHabits) {
+        const habitLogs = loadedLogs.filter(l => l.habit_id === habit.id)
+        const created = await ensureHabitAction(userId, habit, habitLogs, newActions)
+        if (created) newActions.push(created)
+      }
+      setActions(newActions)
+    } else if (!seeded) {
       setSeeded(true)
       for (const [i, h] of DEFAULT_HABITS.entries()) {
         const { data } = await supabase.from('habits').insert({ user_id: userId, ...h, position: i }).select().single()
-        if (data) setHabits([data])
+        if (data) {
+          setHabits([data])
+          const action = await ensureHabitAction(userId, data, [], [])
+          if (action) setActions([action])
+        }
       }
     }
     setLoading(false)
   }
 
   async function addHabit({ name, icon, frequency }) {
-    const { data } = await supabase.from('habits').insert({ user_id: userId, name, icon, frequency, position: habits.length }).select().single()
-    if (data) setHabits(prev => [...prev, data])
+    const { data } = await supabase.from('habits')
+      .insert({ user_id: userId, name, icon, frequency, position: habits.length })
+      .select().single()
+    if (data) {
+      setHabits(prev => [...prev, data])
+      // Immediately create first action
+      const action = await ensureHabitAction(userId, data, [], actions)
+      if (action) setActions(prev => [...prev, action])
+    }
   }
+
   async function editHabit(habit, changes) {
-    setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, ...changes } : h))
+    const updated = { ...habit, ...changes }
+    setHabits(prev => prev.map(h => h.id === habit.id ? updated : h))
     await supabase.from('habits').update(changes).eq('id', habit.id)
+    // Update text on any pending action for this habit
+    const pendingAction = actions.find(a => a.habit_id === habit.id && !a.done)
+    if (pendingAction && (changes.icon || changes.name)) {
+      const newText = `${updated.icon} ${updated.name}`
+      setActions(prev => prev.map(a => a.id === pendingAction.id ? { ...a, text: newText } : a))
+      await supabase.from('actions').update({ text: newText }).eq('id', pendingAction.id)
+    }
   }
+
   async function deleteHabit(habit) {
     setHabits(prev => prev.filter(h => h.id !== habit.id))
     setLogs(prev => prev.filter(l => l.habit_id !== habit.id))
+    setActions(prev => prev.filter(a => a.habit_id !== habit.id))
     await supabase.from('habits').delete().eq('id', habit.id)
+    // Cascade deletes the actions via FK
   }
+
   async function toggleToday(habit) {
     const t = today()
     const existing = logs.find(l => l.habit_id === habit.id && l.logged_date === t)
+
     if (existing) {
+      // Undo: remove the log
       setLogs(prev => prev.filter(l => l.id !== existing.id))
       await supabase.from('habit_logs').delete().eq('id', existing.id)
+      // Mark today's action as not done
+      const todayAction = actions.find(a => a.habit_id === habit.id && a.eta === t)
+      if (todayAction) {
+        setActions(prev => prev.map(a => a.id === todayAction.id ? { ...a, done: false } : a))
+        await supabase.from('actions').update({ done: false }).eq('id', todayAction.id)
+        // Remove the tomorrow action if we created one
+        const tomAction = actions.find(a => a.habit_id === habit.id && a.eta === tomorrow() && !a.done)
+        if (tomAction) {
+          setActions(prev => prev.filter(a => a.id !== tomAction.id))
+          await supabase.from('actions').delete().eq('id', tomAction.id)
+        }
+      }
     } else {
-      const { data } = await supabase.from('habit_logs').insert({ user_id: userId, habit_id: habit.id, logged_date: t }).select().single()
-      if (data) setLogs(prev => [...prev, data])
+      // Mark done: log it
+      const { data: logData } = await supabase.from('habit_logs')
+        .insert({ user_id: userId, habit_id: habit.id, logged_date: t })
+        .select().single()
+      if (logData) setLogs(prev => [...prev, logData])
+
+      // Mark today's action done
+      const todayAction = actions.find(a => a.habit_id === habit.id && a.eta === t)
+      if (todayAction) {
+        setActions(prev => prev.map(a => a.id === todayAction.id ? { ...a, done: true } : a))
+        await supabase.from('actions').update({ done: true }).eq('id', todayAction.id)
+      }
+
+      // Create next pending action
+      const habitLogs = [...logs.filter(l => l.habit_id === habit.id), { logged_date: t }]
+      const allHabitActions = [...actions, ...(todayAction ? [] : [])]
+      const newAction = await ensureHabitAction(userId, habit, habitLogs.sort((a, b) => a.logged_date < b.logged_date ? -1 : 1), actions)
+      if (newAction) setActions(prev => [...prev, newAction])
     }
   }
 
   if (loading) return <Spinner />
+
   const todayDone = habits.filter(h => logs.some(l => l.habit_id === h.id && l.logged_date === today())).length
 
   return (
@@ -196,7 +318,17 @@ export default function Habits({ userId }) {
         <div style={S.emptyState}><div style={{ fontSize: '28px', marginBottom: '8px' }}>💊</div><div style={S.habitName}>No habits yet</div><div style={{ ...S.dimText, marginTop: '4px' }}>Track daily habits with streak counting and a 30-day heatmap.</div></div>
       )}
       <div style={S.grid}>
-        {habits.map(habit => <HabitCard key={habit.id} habit={habit} logs={logs.filter(l => l.habit_id === habit.id)} onToggleToday={toggleToday} onDelete={deleteHabit} onEdit={editHabit} />)}
+        {habits.map(habit => (
+          <HabitCard
+            key={habit.id}
+            habit={habit}
+            logs={logs.filter(l => l.habit_id === habit.id)}
+            habitAction={actions.find(a => a.habit_id === habit.id && !a.done)}
+            onToggleToday={toggleToday}
+            onDelete={deleteHabit}
+            onEdit={editHabit}
+          />
+        ))}
       </div>
     </div>
   )

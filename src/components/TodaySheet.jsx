@@ -122,9 +122,10 @@ function SheetItem({ item, projectName, milestoneName, onToggle, onReschedule, o
         </div>
         <div style={S.meta}>
           {isInbox && <span style={S.inboxBadge}>📥 Inbox</span>}
-          {projectName && <span>{projectName}</span>}
+          {item.habit_id && <span style={{ ...S.inboxBadge, background: 'rgba(90,122,0,0.07)' }}>💊 Habit</span>}
+          {projectName && !item.habit_id && <span>{projectName}</span>}
           {milestoneName && <><span style={{ color: 'var(--border2)' }}>›</span><span>{milestoneName}</span></>}
-          {item.recurring && <span style={S.recurBadge}>↻ {item.frequency}</span>}
+          {item.recurring && !item.habit_id && <span style={S.recurBadge}>↻ {item.frequency}</span>}
         </div>
       </div>
 
