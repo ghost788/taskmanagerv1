@@ -62,17 +62,36 @@ export function etaColor(dateStr, done) {
   return 'var(--dim)'
 }
 
-export function nextOccurrence(fromDate, frequency) {
+export function nextOccurrence(fromDate, frequency, everyXDays = 1) {
   const [y, m, day] = fromDate.split('-').map(Number)
   const d = new Date(y, m - 1, day)
   switch (frequency) {
-    case 'daily':    d.setDate(d.getDate() + 1); break
-    case 'weekly':   d.setDate(d.getDate() + 7); break
-    case 'biweekly': d.setDate(d.getDate() + 14); break
-    case 'monthly':  d.setMonth(d.getMonth() + 1); break
+    case 'daily':        d.setDate(d.getDate() + 1); break
+    case 'weekly':       d.setDate(d.getDate() + 7); break
+    case 'biweekly':     d.setDate(d.getDate() + 14); break
+    case 'monthly':      d.setMonth(d.getMonth() + 1); break
+    case 'every_x_days': d.setDate(d.getDate() + (everyXDays || 1)); break
+    default:             d.setDate(d.getDate() + 1); break
   }
   return localDateStr(d)
 }
+
+// For weekday-based habits: find next date ON or AFTER fromDate on one of the given days.
+// Set afterCompleted=true to start searching from the day AFTER fromDate.
+export function nextWeekdayOccurrence(fromDate, repeatDays, afterCompleted = false) {
+  if (!repeatDays || repeatDays.length === 0) return fromDate
+  const [y, m, day] = fromDate.split('-').map(Number)
+  const d = new Date(y, m - 1, day)
+  if (afterCompleted) d.setDate(d.getDate() + 1)
+  for (let i = 0; i < 14; i++) {
+    if (repeatDays.includes(d.getDay())) return localDateStr(d)
+    d.setDate(d.getDate() + 1)
+  }
+  return localDateStr(d)
+}
+
+export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export const WEEKDAY_FULL   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export function daysBetween(a, b) {
   const [ay, am, ad] = a.split('-').map(Number)
